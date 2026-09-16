@@ -112,19 +112,31 @@
                                 {{ $shopSettings['currency_symbol'] ?? 'LKR' }} {{ number_format($order->total_amount, 2) }}
                             </td>
                             <td class="p-4 text-center">
-                                <div class="flex items-center justify-center gap-2">
+                                <div class="flex flex-wrap items-center justify-center gap-2">
                                     <button @click="viewOrderDetails({{ $order->id }})" 
                                             class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-all flex items-center gap-1">
                                         <i data-lucide="eye" class="w-3.5 h-3.5"></i>
                                         View
                                     </button>
 
+                                    <button @click="openEditModal({{ $order->id }})" 
+                                            class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-bold rounded-lg transition-all flex items-center gap-1">
+                                        <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                                        Edit
+                                    </button>
+
                                     <a href="{{ route('orders.receipt', $order->id) }}" 
                                        target="_blank" 
                                        class="px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1 shadow-sm">
                                         <i data-lucide="printer" class="w-3.5 h-3.5"></i>
-                                        Reprint Bill
+                                        Reprint
                                     </a>
+
+                                    <button @click="deleteInvoice({{ $order->id }})" 
+                                            class="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500 text-rose-300 hover:text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                        Delete
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -223,6 +235,110 @@
         </div>
     </div>
 
+    <!-- EDIT INVOICE MODAL -->
+    <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="font-bold text-lg text-white">Edit Invoice</h3>
+                    <span class="font-mono text-xs text-brand-400 font-bold" x-text="editInvoiceNumber"></span>
+                </div>
+                <button @click="showEditModal = false" class="text-slate-400 hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Editable Items -->
+            <div>
+                <label class="block text-xs font-semibold uppercase text-slate-400 mb-2">Invoice Items</label>
+                <div class="max-h-56 overflow-y-auto border border-slate-800 rounded-xl p-2 space-y-2">
+                    <template x-for="(item, index) in editItems" :key="item.product_id">
+                        <div class="flex items-center justify-between gap-2 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                            <div class="flex-1 min-w-0">
+                                <div class="font-bold text-white text-xs truncate" x-text="item.product_name"></div>
+                                <div class="font-mono text-[10px] text-slate-500" x-text="item.item_code + ' · ' + currencySymbol + ' ' + Number(item.unit_price).toFixed(2)"></div>
+                            </div>
+                            <div class="flex items-center gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+                                <button @click="changeEditQty(index, -1)" class="w-6 h-6 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md font-bold text-xs">-</button>
+                                <span class="w-7 text-center font-bold text-xs text-white" x-text="item.quantity"></span>
+                                <button @click="changeEditQty(index, 1)" class="w-6 h-6 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md font-bold text-xs">+</button>
+                            </div>
+                            <div class="text-right w-20">
+                                <div class="text-emerald-400 font-bold text-xs" x-text="currencySymbol + ' ' + Number(item.quantity * item.unit_price).toFixed(2)"></div>
+                            </div>
+                            <button @click="removeEditItem(index)" class="p-1.5 bg-slate-900 hover:bg-rose-600 text-slate-400 hover:text-white rounded-lg transition-all" title="Remove item">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </template>
+                    <div x-show="editItems.length === 0" class="py-8 text-center text-slate-500 text-xs">
+                        No items on this invoice. Add at least one product below.
+                    </div>
+                </div>
+
+                <!-- Add Product Row -->
+                <div class="mt-2 flex flex-col sm:flex-row gap-2">
+                    <select x-model="addProductId" class="flex-1 bg-slate-950 border border-slate-800 text-white text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-brand-500">
+                        <option value="">Choose product to add...</option>
+                        <template x-for="p in products" :key="p.id">
+                            <option :value="p.id" x-text="p.item_code + ' — ' + p.name + ' (' + currencySymbol + ' ' + Number(p.price).toFixed(2) + ')'"></option>
+                        </template>
+                    </select>
+                    <input type="number" min="1" x-model.number="addProductQty" placeholder="Qty"
+                           class="w-20 bg-slate-950 border border-slate-800 text-white text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-brand-500">
+                    <button @click="addEditItem()" class="px-3 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        Add Item
+                    </button>
+                </div>
+            </div>
+
+            <!-- Payment Details -->
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-400 mb-2">Payment Method</label>
+                    <select x-model="editPaymentMethod" class="w-full bg-slate-950 border border-slate-800 text-white text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-brand-500">
+                        <option value="cash">Cash</option>
+                        <option value="card">Card</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-400 mb-2">Amount Paid (<span x-text="currencySymbol"></span>)</label>
+                    <input type="number" step="0.01" min="0" x-model.number="editPaidAmount"
+                           class="w-full bg-slate-950 border border-slate-800 text-white text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-brand-500">
+                </div>
+            </div>
+
+            <!-- Live Totals -->
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 text-xs space-y-1 text-right">
+                <div>New Total: <strong class="text-emerald-400"><span x-text="currencySymbol"></span> <span x-text="Number(editTotal).toFixed(2)"></span></strong></div>
+                <div>Paid Amount: <span class="text-slate-300"><span x-text="currencySymbol"></span> <span x-text="Number(editPaidAmount || 0).toFixed(2)"></span></span></div>
+                <div>Change Returned: <span :class="editChange >= 0 ? 'text-emerald-400' : 'text-rose-400'"><span x-text="currencySymbol"></span> <span x-text="Number(Math.max(editChange, 0)).toFixed(2)"></span></span></div>
+            </div>
+
+            <!-- Error Banner -->
+            <div x-show="editError" x-text="editError" class="p-3 bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold rounded-xl"></div>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" @click="showEditModal = false" class="px-4 py-2 bg-slate-800 text-slate-300 font-bold rounded-xl text-xs">
+                    Cancel
+                </button>
+                <button type="button" @click="saveInvoice()" :disabled="isSavingEdit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all">
+                    <span x-show="!isSavingEdit" class="flex items-center gap-1">
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                        Save Changes
+                    </span>
+                    <span x-show="isSavingEdit" class="flex items-center gap-1">
+                        <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>
+                        Saving...
+                    </span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
 </div>
 @endsection
 
@@ -232,7 +348,27 @@
         return {
             showModal: false,
             activeOrder: null,
+            showEditModal: false,
+            editOrderId: null,
+            editInvoiceNumber: '',
+            editItems: [],
+            editPaidAmount: 0,
+            editPaymentMethod: 'cash',
+            addProductId: '',
+            addProductQty: 1,
+            isSavingEdit: false,
+            editError: '',
             currencySymbol: "{{ $shopSettings['currency_symbol'] ?? 'LKR' }}",
+            products: @json($products),
+            csrfToken: "{{ csrf_token() }}",
+
+            get editTotal() {
+                return this.editItems.reduce((sum, i) => sum + (i.unit_price * i.quantity), 0);
+            },
+
+            get editChange() {
+                return (parseFloat(this.editPaidAmount) || 0) - this.editTotal;
+            },
 
             viewOrderDetails(orderId) {
                 fetch(`/admin/sales/${orderId}`)
@@ -243,6 +379,121 @@
                             this.showModal = true;
                         }
                     });
+            },
+
+            openEditModal(orderId) {
+                fetch(`/admin/sales/${orderId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            const order = data.order;
+                            this.editOrderId = order.id;
+                            this.editInvoiceNumber = order.invoice_number;
+                            this.editItems = order.items.map(i => ({
+                                product_id: i.product_id,
+                                product_name: i.product_name,
+                                item_code: i.item_code,
+                                unit_price: parseFloat(i.unit_price),
+                                quantity: i.quantity
+                            }));
+                            this.editPaidAmount = parseFloat(order.paid_amount);
+                            this.editPaymentMethod = order.payment_method;
+                            this.addProductId = '';
+                            this.addProductQty = 1;
+                            this.editError = '';
+                            this.showEditModal = true;
+                        }
+                    });
+            },
+
+            changeEditQty(index, delta) {
+                const newQty = this.editItems[index].quantity + delta;
+                if (newQty < 1) return;
+                this.editItems[index].quantity = newQty;
+            },
+
+            removeEditItem(index) {
+                this.editItems.splice(index, 1);
+            },
+
+            addEditItem() {
+                if (!this.addProductId) return;
+                const product = this.products.find(p => p.id === Number(this.addProductId));
+                if (!product) return;
+
+                const existing = this.editItems.find(i => i.product_id === product.id);
+                if (existing) {
+                    existing.quantity += Math.max(1, this.addProductQty || 1);
+                } else {
+                    this.editItems.push({
+                        product_id: product.id,
+                        product_name: product.name,
+                        item_code: product.item_code,
+                        unit_price: parseFloat(product.price),
+                        quantity: Math.max(1, this.addProductQty || 1)
+                    });
+                }
+                this.addProductId = '';
+                this.addProductQty = 1;
+            },
+
+            saveInvoice() {
+                if (this.editItems.length === 0) {
+                    this.editError = 'Invoice must contain at least one item.';
+                    return;
+                }
+                if ((parseFloat(this.editPaidAmount) || 0) < this.editTotal) {
+                    this.editError = 'Paid amount cannot be less than the invoice total.';
+                    return;
+                }
+
+                this.isSavingEdit = true;
+                this.editError = '';
+
+                fetch(`/admin/sales/${this.editOrderId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken
+                    },
+                    body: JSON.stringify({
+                        items: this.editItems.map(i => ({ id: i.product_id, quantity: i.quantity })),
+                        paid_amount: this.editPaidAmount,
+                        payment_method: this.editPaymentMethod
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    this.isSavingEdit = false;
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        this.editError = data.message || 'Failed to update invoice.';
+                    }
+                })
+                .catch(() => {
+                    this.isSavingEdit = false;
+                    this.editError = 'Network error updating invoice.';
+                });
+            },
+
+            deleteInvoice(orderId) {
+                if (!confirm('Delete this invoice permanently? Its items will be returned to stock.')) return;
+
+                fetch(`/admin/sales/${orderId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': this.csrfToken
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert(data.message || 'Failed to delete invoice.');
+                    }
+                });
             }
         };
     }

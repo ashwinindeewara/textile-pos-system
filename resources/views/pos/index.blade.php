@@ -49,6 +49,14 @@
                           class="px-2 py-0.5 bg-amber-500 text-slate-950 text-[10px] font-extrabold rounded-full" 
                           x-text="heldOrders.length"></span>
                 </button>
+
+                <!-- My Invoices Button -->
+                <button type="button" 
+                        @click="openInvoiceModal()"
+                        class="px-3.5 py-2.5 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs flex items-center gap-2 transition-all">
+                    <i data-lucide="receipt" class="w-4 h-4 text-brand-400"></i>
+                    <span>My Invoices</span>
+                </button>
             </div>
 
         </div>
@@ -221,9 +229,9 @@
                 <button @click="openPayModal()" 
                         :disabled="cart.length === 0"
                         :class="cart.length === 0 ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-500' : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/30'"
-                        class="col-span-2 py-3 px-4 font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-xs sm:text-sm">
-                    <i data-lucide="credit-card" class="w-4 h-4"></i>
-                    Checkout (<span x-text="currencySymbol"></span> <span x-text="formatNumber(cartTotal)"></span>)
+                        class="col-span-2 py-3 pl-4 pr-2.5 font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-xs sm:text-sm">
+                    <i data-lucide="credit-card" class="w-4 h-4 shrink-0"></i>
+                    <span class="whitespace-nowrap overflow-hidden text-ellipsis min-w-0">Checkout (<span x-text="currencySymbol"></span> <span x-text="formatNumber(cartTotal)"></span>)</span>
                 </button>
 
             </div>
@@ -314,8 +322,7 @@
     <div x-show="showPayModal" x-cloak 
          class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         
-        <div @click.away="showPayModal = false" 
-             class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-3xl p-6 shadow-2xl space-y-5 relative">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-xl rounded-3xl p-6 shadow-2xl space-y-5 relative max-h-[90vh] overflow-y-auto">
             
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div class="flex items-center gap-2">
@@ -369,21 +376,44 @@
                 <label class="block text-xs font-semibold uppercase text-slate-400 mb-2">
                     Amount Paid by Customer (<span x-text="currencySymbol"></span>)
                 </label>
-                <input type="number" 
-                       step="0.01" 
-                       x-model.number="paidAmount" 
+                <input type="text" 
+                       inputmode="decimal" 
+                       x-model="paidAmountStr" 
                        placeholder="Enter cash received..."
-                       class="w-full px-4 py-3 bg-slate-950 border-2 border-slate-800 focus:border-brand-500 text-white font-extrabold text-xl rounded-xl focus:outline-none transition-all">
+                       class="w-full px-4 py-3 bg-slate-950 border-2 border-slate-800 focus:border-brand-500 text-white font-extrabold text-xl rounded-xl focus:outline-none transition-all text-right">
+            </div>
+
+            <!-- Touch Numpad -->
+            <div>
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button" @click="padInput('7')" class="py-3.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold text-lg rounded-xl transition-all">7</button>
+                    <button type="button" @click="padInput('8')" class="py-3.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold text-lg rounded-xl transition-all">8</button>
+                    <button type="button" @click="padInput('9')" class="py-3.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold text-lg rounded-xl transition-all">9</button>
+                    <button type="button" @click="padInput('4')" class="py-3.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold text-lg rounded-xl transition-all">4</button>
+                    <button type="button" @click="padInput('5')" class="py-3.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold text-lg rounded-xl transition-all">5</button>
+                    <button type="button" @click="padInput('6')" class="py-3.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold text-lg rounded-xl transition-all">6</button>
+                    <button type="button" @click="padInput('1')" class="py-3.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold text-lg rounded-xl transition-all">1</button>
+                    <button type="button" @click="padInput('2')" class="py-3.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold text-lg rounded-xl transition-all">2</button>
+                    <button type="button" @click="padInput('3')" class="py-3.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold text-lg rounded-xl transition-all">3</button>
+                    <button type="button" @click="padInput('.')" class="py-3.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold text-lg rounded-xl transition-all">.</button>
+                    <button type="button" @click="padInput('0')" class="py-3.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold text-lg rounded-xl transition-all">0</button>
+                    <button type="button" @click="padInput('backspace')" class="py-3.5 bg-rose-500/20 hover:bg-rose-500/30 active:scale-95 text-rose-300 font-bold text-lg rounded-xl transition-all flex items-center justify-center" title="Delete">
+                        <i data-lucide="delete" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <button type="button" @click="padInput('clear')" class="mt-2 w-full py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 font-bold text-xs rounded-xl transition-all">
+                    Clear Amount
+                </button>
             </div>
 
             <!-- Quick Cash Shortcuts -->
             <div>
                 <span class="text-xs font-semibold text-slate-400 block mb-2">Quick Cash Amounts:</span>
                 <div class="grid grid-cols-4 gap-2">
-                    <button type="button" @click="paidAmount = cartTotal" class="py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white rounded-lg transition-all">Exact</button>
-                    <button type="button" @click="paidAmount = 1000" class="py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 rounded-lg transition-all">1,000</button>
-                    <button type="button" @click="paidAmount = 5000" class="py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 rounded-lg transition-all">5,000</button>
-                    <button type="button" @click="paidAmount = 10000" class="py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 rounded-lg transition-all">10,000</button>
+                    <button type="button" @click="paidAmountStr = String(cartTotal)" class="py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white rounded-lg transition-all">Exact</button>
+                    <button type="button" @click="paidAmountStr = '1000'" class="py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 rounded-lg transition-all">1,000</button>
+                    <button type="button" @click="paidAmountStr = '5000'" class="py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 rounded-lg transition-all">5,000</button>
+                    <button type="button" @click="paidAmountStr = '10000'" class="py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 rounded-lg transition-all">10,000</button>
                 </div>
             </div>
 
@@ -414,6 +444,180 @@
         </div>
     </div>
 
+    <!-- MY INVOICES MODAL -->
+    <div x-show="showInvoiceModal" x-cloak 
+         class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-brand-500/20 text-brand-400 flex items-center justify-center">
+                        <i data-lucide="receipt" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-white">My Invoices</h3>
+                        <p class="text-xs text-slate-400">Recent completed bills. Reprint the receipt or edit a bill when needed.</p>
+                    </div>
+                </div>
+                <button @click="showInvoiceModal = false" class="text-slate-400 hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- List of Invoices -->
+            <div class="max-h-96 overflow-y-auto space-y-3">
+                <template x-for="inv in invoices" :key="inv.id">
+                    <div class="p-4 bg-slate-950 border border-slate-800/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-brand-500/40 transition-all">
+                        
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono text-xs font-bold text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20" x-text="inv.invoice_number"></span>
+                                <span class="text-xs text-slate-400" x-text="new Date(inv.created_at).toLocaleString()"></span>
+                            </div>
+                            <div class="text-xs text-slate-400 font-medium mt-1.5">
+                                <span x-text="inv.items.length + ' item(s) · ' + inv.payment_method.toUpperCase()"></span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 self-end sm:self-center">
+                            <div class="text-right">
+                                <span class="text-[10px] text-slate-500 uppercase font-semibold block">Total</span>
+                                <span class="font-extrabold text-sm text-emerald-400"><span x-text="currencySymbol"></span> <span x-text="formatNumber(inv.total_amount)"></span></span>
+                            </div>
+
+                            <button @click="printInvoice(inv)" 
+                                    class="px-3 py-2 bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-brand-600/30 flex items-center gap-1">
+                                <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                                Reprint
+                            </button>
+
+                            <button @click="openEditInvoice(inv)" 
+                                    class="px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold text-xs rounded-xl transition-all border border-amber-500/30 flex items-center gap-1">
+                                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                                Edit
+                            </button>
+                        </div>
+
+                    </div>
+                </template>
+
+                <div x-show="invoices.length === 0" class="py-12 text-center text-slate-500">
+                    <i data-lucide="receipt" class="w-10 h-10 mx-auto mb-2 opacity-40"></i>
+                    <p class="font-semibold text-sm text-slate-400">No completed invoices yet.</p>
+                    <p class="text-xs text-slate-500 mt-1">Billed transactions will appear here for reprinting and editing.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- EDIT INVOICE MODAL (CASHIER) -->
+    <div x-show="showInvoiceEditModal" x-cloak 
+         class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                    <h3 class="font-bold text-lg text-white">Edit Invoice</h3>
+                    <span class="font-mono text-xs text-brand-400 font-bold" x-text="invoiceEditNumber"></span>
+                </div>
+                <button @click="showInvoiceEditModal = false" class="text-slate-400 hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Editable Items -->
+            <div>
+                <label class="block text-xs font-semibold uppercase text-slate-400 mb-2">Invoice Items</label>
+                <div class="max-h-56 overflow-y-auto border border-slate-800 rounded-xl p-2 space-y-2">
+                    <template x-for="(item, index) in invoiceEditItems" :key="item.product_id">
+                        <div class="flex items-center justify-between gap-2 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                            <div class="flex-1 min-w-0">
+                                <div class="font-bold text-white text-xs truncate" x-text="item.product_name"></div>
+                                <div class="font-mono text-[10px] text-slate-500" x-text="item.item_code + ' · ' + currencySymbol + ' ' + formatNumber(item.unit_price)"></div>
+                            </div>
+                            <div class="flex items-center gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+                                <button @click="changeInvoiceEditQty(index, -1)" class="w-6 h-6 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md font-bold text-xs">-</button>
+                                <span class="w-7 text-center font-bold text-xs text-white" x-text="item.quantity"></span>
+                                <button @click="changeInvoiceEditQty(index, 1)" class="w-6 h-6 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md font-bold text-xs">+</button>
+                            </div>
+                            <div class="text-right w-20">
+                                <div class="text-emerald-400 font-bold text-xs" x-text="currencySymbol + ' ' + formatNumber(item.quantity * item.unit_price)"></div>
+                            </div>
+                            <button @click="removeInvoiceEditItem(index)" class="p-1.5 bg-slate-900 hover:bg-rose-600 text-slate-400 hover:text-white rounded-lg transition-all" title="Remove item">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </template>
+                    <div x-show="invoiceEditItems.length === 0" class="py-8 text-center text-slate-500 text-xs">
+                        No items on this invoice. Add at least one product below.
+                    </div>
+                </div>
+
+                <!-- Add Product Row -->
+                <div class="mt-2 flex flex-col sm:flex-row gap-2">
+                    <select x-model="invoiceAddProductId" class="flex-1 bg-slate-950 border border-slate-800 text-white text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-brand-500">
+                        <option value="">Choose product to add...</option>
+                        <template x-for="p in allProducts" :key="p.id">
+                            <option :value="p.id" x-text="p.item_code + ' — ' + p.name + ' (' + currencySymbol + ' ' + formatNumber(p.price) + ')'"></option>
+                        </template>
+                    </select>
+                    <input type="number" min="1" x-model.number="invoiceAddProductQty" placeholder="Qty"
+                           class="w-20 bg-slate-950 border border-slate-800 text-white text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-brand-500">
+                    <button @click="addInvoiceEditItem()" class="px-3 py-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        Add Item
+                    </button>
+                </div>
+            </div>
+
+            <!-- Payment Details -->
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-400 mb-2">Payment Method</label>
+                    <select x-model="invoiceEditPaymentMethod" class="w-full bg-slate-950 border border-slate-800 text-white text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-brand-500">
+                        <option value="cash">Cash</option>
+                        <option value="card">Card</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-400 mb-2">Amount Paid (<span x-text="currencySymbol"></span>)</label>
+                    <input type="number" step="0.01" min="0" x-model.number="invoiceEditPaidAmount"
+                           class="w-full bg-slate-950 border border-slate-800 text-white text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-brand-500">
+                </div>
+            </div>
+
+            <!-- Live Totals -->
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 text-xs space-y-1 text-right">
+                <div>New Total: <strong class="text-emerald-400"><span x-text="currencySymbol"></span> <span x-text="formatNumber(invoiceEditTotal)"></span></strong></div>
+                <div>Paid Amount: <span class="text-slate-300"><span x-text="currencySymbol"></span> <span x-text="formatNumber(invoiceEditPaidAmount || 0)"></span></span></div>
+                <div>Change Returned: <span :class="invoiceEditChange >= 0 ? 'text-emerald-400' : 'text-rose-400'"><span x-text="currencySymbol"></span> <span x-text="formatNumber(Math.max(invoiceEditChange, 0))"></span></span></div>
+            </div>
+
+            <!-- Error Banner -->
+            <div x-show="invoiceEditError" x-text="invoiceEditError" class="p-3 bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold rounded-xl"></div>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" @click="showInvoiceEditModal = false" class="px-4 py-2 bg-slate-800 text-slate-300 font-bold rounded-xl text-xs">
+                    Cancel
+                </button>
+                <button type="button" @click="saveEditedInvoice()" :disabled="isSavingInvoice" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all">
+                    <span x-show="!isSavingInvoice" class="flex items-center gap-1">
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                        Save Changes
+                    </span>
+                    <span x-show="isSavingInvoice" class="flex items-center gap-1">
+                        <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>
+                        Saving...
+                    </span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
 </div>
 @endsection
 
@@ -422,15 +626,28 @@
     function posSystem() {
         return {
             products: @json($products),
+            allProducts: @json($allProducts),
             currencySymbol: "{{ $shopSettings['currency_symbol'] ?? 'LKR' }}",
             itemCodeInput: '',
             searchQuery: '',
             selectedCategory: 'all',
             cart: [],
             heldOrders: [],
+            invoices: [],
             showPayModal: false,
             showHeldModal: false,
-            paidAmount: 0,
+            showInvoiceModal: false,
+            showInvoiceEditModal: false,
+            invoiceEditId: null,
+            invoiceEditNumber: '',
+            invoiceEditItems: [],
+            invoiceEditPaidAmount: 0,
+            invoiceEditPaymentMethod: 'cash',
+            invoiceAddProductId: '',
+            invoiceAddProductQty: 1,
+            isSavingInvoice: false,
+            invoiceEditError: '',
+            paidAmountStr: '0',
             paymentMethod: 'cash',
             isSubmitting: false,
             isHolding: false,
@@ -463,8 +680,151 @@
                 return this.cart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
             },
 
+            get paidAmount() {
+                return parseFloat(this.paidAmountStr) || 0;
+            },
+
             get changeAmount() {
                 return (this.paidAmount || 0) - this.cartTotal;
+            },
+
+            padInput(key) {
+                let str = this.paidAmountStr;
+                if (key === 'backspace') {
+                    str = str.slice(0, -1);
+                    if (str === '') str = '0';
+                } else if (key === 'clear') {
+                    str = '0';
+                } else if (key === '.') {
+                    if (!str.includes('.')) str += '.';
+                } else {
+                    if (str === '0') str = '';
+                    str += key;
+                }
+                this.paidAmountStr = str;
+            },
+
+            get invoiceEditTotal() {
+                return this.invoiceEditItems.reduce((sum, i) => sum + (i.unit_price * i.quantity), 0);
+            },
+
+            get invoiceEditChange() {
+                return (parseFloat(this.invoiceEditPaidAmount) || 0) - this.invoiceEditTotal;
+            },
+
+            openInvoiceModal() {
+                fetch("{{ route('pos.invoices') }}")
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.invoices = data.invoices;
+                            this.showInvoiceModal = true;
+                        }
+                    });
+            },
+
+            printInvoice(inv) {
+                window.open("{{ url('orders') }}/" + inv.id + "/receipt", '_blank', 'width=400,height=600');
+            },
+
+            openEditInvoice(inv) {
+                this.invoiceEditId = inv.id;
+                this.invoiceEditNumber = inv.invoice_number;
+                this.invoiceEditItems = inv.items.map(i => ({
+                    product_id: i.product_id,
+                    product_name: i.product_name,
+                    item_code: i.item_code,
+                    unit_price: parseFloat(i.unit_price),
+                    quantity: i.quantity
+                }));
+                this.invoiceEditPaidAmount = parseFloat(inv.paid_amount);
+                this.invoiceEditPaymentMethod = inv.payment_method;
+                this.invoiceAddProductId = '';
+                this.invoiceAddProductQty = 1;
+                this.invoiceEditError = '';
+                this.showInvoiceEditModal = true;
+            },
+
+            changeInvoiceEditQty(index, delta) {
+                const newQty = this.invoiceEditItems[index].quantity + delta;
+                if (newQty < 1) return;
+                this.invoiceEditItems[index].quantity = newQty;
+            },
+
+            removeInvoiceEditItem(index) {
+                this.invoiceEditItems.splice(index, 1);
+            },
+
+            addInvoiceEditItem() {
+                if (!this.invoiceAddProductId) return;
+                const product = this.allProducts.find(p => p.id === Number(this.invoiceAddProductId));
+                if (!product) return;
+
+                const existing = this.invoiceEditItems.find(i => i.product_id === product.id);
+                if (existing) {
+                    existing.quantity += Math.max(1, this.invoiceAddProductQty || 1);
+                } else {
+                    this.invoiceEditItems.push({
+                        product_id: product.id,
+                        product_name: product.name,
+                        item_code: product.item_code,
+                        unit_price: parseFloat(product.price),
+                        quantity: Math.max(1, this.invoiceAddProductQty || 1)
+                    });
+                }
+                this.invoiceAddProductId = '';
+                this.invoiceAddProductQty = 1;
+            },
+
+            saveEditedInvoice() {
+                if (this.invoiceEditItems.length === 0) {
+                    this.invoiceEditError = 'Invoice must contain at least one item.';
+                    return;
+                }
+                if ((parseFloat(this.invoiceEditPaidAmount) || 0) < this.invoiceEditTotal) {
+                    this.invoiceEditError = 'Paid amount cannot be less than the invoice total.';
+                    return;
+                }
+
+                this.isSavingInvoice = true;
+                this.invoiceEditError = '';
+
+                fetch(`/pos/invoices/${this.invoiceEditId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        items: this.invoiceEditItems.map(i => ({ id: i.product_id, quantity: i.quantity })),
+                        paid_amount: this.invoiceEditPaidAmount,
+                        payment_method: this.invoiceEditPaymentMethod
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    this.isSavingInvoice = false;
+                    if (data.success) {
+                        this.showInvoiceEditModal = false;
+                        this.fetchMyInvoices();
+                    } else {
+                        this.invoiceEditError = data.message || 'Failed to update invoice.';
+                    }
+                })
+                .catch(() => {
+                    this.isSavingInvoice = false;
+                    this.invoiceEditError = 'Network error updating invoice.';
+                });
+            },
+
+            fetchMyInvoices() {
+                fetch("{{ route('pos.invoices') }}")
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.invoices = data.invoices;
+                        }
+                    });
             },
 
             formatNumber(num) {
@@ -637,7 +997,7 @@
 
             openPayModal() {
                 if (this.cart.length === 0) return;
-                this.paidAmount = this.cartTotal;
+                this.paidAmountStr = String(this.cartTotal);
                 this.checkoutError = '';
                 this.showPayModal = true;
             },

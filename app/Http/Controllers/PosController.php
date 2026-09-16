@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Services\InvoiceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -32,8 +33,9 @@ class PosController extends Controller
         }
 
         $products = $query->orderBy('name')->get();
+        $allProducts = Product::with('category')->orderBy('name')->get();
 
-        return view('pos.index', compact('categories', 'products'));
+        return view('pos.index', compact('categories', 'products', 'allProducts'));
     }
 
     public function lookup(Request $request)
@@ -213,6 +215,65 @@ class PosController extends Controller
             'success' => true,
             'message' => 'Held order deleted.',
         ]);
+    }
+
+    /**
+     * Fetch the cashier's most recent completed invoices.
+     */
+    public function invoiceHistory()
+    {
+        $invoices = Order::with(['items', 'cashier'])
+            ->where('cashier_id', Auth::id())
+            ->where('status', 'completed')
+            ->orderBy('created_at', 'desc')
+            ->limit(30)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'invoices' => $invoices,
+        ]);
+    }
+
+    /**
+     * Edit / correct one of the cashier's own completed invoices.
+     */
+    public function updateInvoice(Request $request, Order $order)
+    {
+        if ($order->cashier_id !== Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You can only edit your own invoices.',
+            ], 403);
+        }
+
+        $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'paid_amount' => 'required|numeric|min:0',
+            'payment_method' => 'required|string|in:cash,card',
+        ]);
+
+        try {
+            $order = app(InvoiceService::class)->update(
+                $order,
+                $request->input('items'),
+                $request->input('paid_amount'),
+                $request->input('payment_method')
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Invoice updated successfully.',
+                'order' => $order,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
     }
 
     /**

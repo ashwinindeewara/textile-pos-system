@@ -163,8 +163,53 @@
     </main>
 
     <script>
-        lucide.createIcons();
-    </script>
+    function renderLucideIcons() {
+        if (window.lucide && typeof lucide.createIcons === 'function') {
+            lucide.createIcons();
+            // Lucide leaves the data-lucide marker on the generated <svg>, so
+            // createIcons() would re-process them on every call (and this can
+            // loop forever). Strip the marker so each icon renders only once.
+            document.querySelectorAll('[data-lucide]').forEach(function (el) {
+                if (el.tagName && el.tagName.toLowerCase() === 'svg') {
+                    el.removeAttribute('data-lucide');
+                }
+            });
+        }
+    }
+
+    renderLucideIcons();
+
+    // Re-render icons whenever Alpine injects new DOM (x-for / x-if lists,
+    // modals, dynamically shown rows etc.) so every button icon stays visible.
+    if (window.MutationObserver) {
+        const iconObserver = new MutationObserver(function (mutations) {
+            let needsRender = false;
+
+            for (let m = 0; m < mutations.length; m++) {
+                const added = mutations[m].addedNodes;
+                for (let i = 0; i < added.length; i++) {
+                    const node = added[i];
+                    if (node.nodeType !== 1) continue;
+                    // In HTML documents SVG elements report 'svg' (lowercase).
+                    if (node.tagName && node.tagName.toLowerCase() === 'svg') continue;
+                    if (node.hasAttribute && node.hasAttribute('data-lucide')) {
+                        needsRender = true;
+                        break;
+                    }
+                    if (node.querySelector && node.querySelector('[data-lucide]')) {
+                        needsRender = true;
+                        break;
+                    }
+                }
+                if (needsRender) break;
+            }
+
+            if (needsRender) renderLucideIcons();
+        });
+
+        iconObserver.observe(document.body, { childList: true, subtree: true });
+    }
+</script>
     @stack('scripts')
 </body>
 </html>

@@ -33,6 +33,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/pos/held-orders', [PosController::class, 'getHeldOrders'])->name('pos.held-orders');
     Route::post('/pos/recall/{order}', [PosController::class, 'recallHeldOrder'])->name('pos.recall');
     Route::delete('/pos/held-orders/{order}', [PosController::class, 'deleteHeldOrder'])->name('pos.delete-held');
+    Route::get('/pos/invoices', [PosController::class, 'invoiceHistory'])->name('pos.invoices');
+    Route::put('/pos/invoices/{order}', [PosController::class, 'updateInvoice'])->name('pos.update-invoice');
 
     // Admin Panel Routes (Protected by role:admin)
     Route::middleware(['role:admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -53,6 +55,8 @@ Route::middleware(['auth'])->group(function () {
         // Sales Reports & History
         Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
         Route::get('/sales/{order}', [SalesController::class, 'show'])->name('sales.show');
+        Route::put('/sales/{order}', [SalesController::class, 'update'])->name('sales.update');
+        Route::delete('/sales/{order}', [SalesController::class, 'destroy'])->name('sales.destroy');
 
         // Shop Settings Management
         Route::get('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');
