@@ -219,6 +219,7 @@
 
                     <!-- Totals -->
                     <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 text-xs space-y-1 text-right">
+                        <div x-show="Number(activeOrder.discount_amount) > 0">Discount: <span class="text-rose-400">- <span x-text="currencySymbol"></span> <span x-text="Number(activeOrder.discount_amount).toFixed(2)"></span></span></div>
                         <div>Total Amount: <strong class="text-sm text-emerald-400"><span x-text="currencySymbol"></span> <span x-text="Number(activeOrder.total_amount).toFixed(2)"></span></strong></div>
                         <div>Paid Amount: <span class="text-slate-300"><span x-text="currencySymbol"></span> <span x-text="Number(activeOrder.paid_amount).toFixed(2)"></span></span></div>
                         <div>Change Returned: <span class="text-slate-300"><span x-text="currencySymbol"></span> <span x-text="Number(activeOrder.change_amount).toFixed(2)"></span></span></div>
@@ -310,8 +311,28 @@
                 </div>
             </div>
 
+            <!-- Discount -->
+            <div>
+                <label class="block text-xs font-semibold uppercase text-slate-400 mb-2">Discount</label>
+                <div class="flex items-center gap-2">
+                    <div class="flex bg-slate-950 border border-slate-800 rounded-xl p-0.5 text-[10px] font-bold">
+                        <button type="button" @click="editDiscountMode = 'percent'"
+                                :class="editDiscountMode === 'percent' ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-slate-200'"
+                                class="px-2.5 py-1.5 rounded-lg transition-all">%</button>
+                        <button type="button" @click="editDiscountMode = 'amount'"
+                                :class="editDiscountMode === 'amount' ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-slate-200'"
+                                class="px-2.5 py-1.5 rounded-lg transition-all">Amt</button>
+                    </div>
+                    <input type="number" step="0.01" min="0" x-model.number="editDiscountInput"
+                           :placeholder="editDiscountMode === 'percent' ? 'Discount percentage' : 'Discount amount'"
+                           class="flex-1 bg-slate-950 border border-slate-800 text-white text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-brand-500">
+                </div>
+            </div>
+
             <!-- Live Totals -->
             <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 text-xs space-y-1 text-right">
+                <div>Subtotal: <span class="text-slate-300"><span x-text="currencySymbol"></span> <span x-text="Number(editSubtotal).toFixed(2)"></span></span></div>
+                <div x-show="editDiscountAmount > 0">Discount: <span class="text-rose-400">- <span x-text="currencySymbol"></span> <span x-text="Number(editDiscountAmount).toFixed(2)"></span></span></div>
                 <div>New Total: <strong class="text-emerald-400"><span x-text="currencySymbol"></span> <span x-text="Number(editTotal).toFixed(2)"></span></strong></div>
                 <div>Paid Amount: <span class="text-slate-300"><span x-text="currencySymbol"></span> <span x-text="Number(editPaidAmount || 0).toFixed(2)"></span></span></div>
                 <div>Change Returned: <span :class="editChange >= 0 ? 'text-emerald-400' : 'text-rose-400'"><span x-text="currencySymbol"></span> <span x-text="Number(Math.max(editChange, 0)).toFixed(2)"></span></span></div>
@@ -354,6 +375,8 @@
             editItems: [],
             editPaidAmount: 0,
             editPaymentMethod: 'cash',
+            editDiscountMode: 'amount',
+            editDiscountInput: 0,
             addProductId: '',
             addProductQty: 1,
             isSavingEdit: false,
@@ -362,8 +385,28 @@
             products: @json($products),
             csrfToken: "{{ csrf_token() }}",
 
-            get editTotal() {
+            get editSubtotal() {
                 return this.editItems.reduce((sum, i) => sum + (i.unit_price * i.quantity), 0);
+            },
+
+            get editDiscountInputValue() {
+                return parseFloat(this.editDiscountInput) || 0;
+            },
+
+            get editDiscountAmount() {
+                if (this.editDiscountInputValue <= 0) return 0;
+                let amount;
+                if (this.editDiscountMode === 'percent') {
+                    amount = (this.editSubtotal * this.editDiscountInputValue) / 100;
+                } else {
+                    amount = this.editDiscountInputValue;
+                }
+                amount = Math.min(amount, this.editSubtotal);
+                return Math.round(amount * 100) / 100;
+            },
+
+            get editTotal() {
+                return Math.max(0, Math.round((this.editSubtotal - this.editDiscountAmount) * 100) / 100);
             },
 
             get editChange() {
@@ -398,6 +441,8 @@
                             }));
                             this.editPaidAmount = parseFloat(order.paid_amount);
                             this.editPaymentMethod = order.payment_method;
+                            this.editDiscountMode = order.discount_percent && order.discount_percent > 0 ? 'percent' : 'amount';
+                            this.editDiscountInput = order.discount_percent && order.discount_percent > 0 ? parseFloat(order.discount_percent) : parseFloat(order.discount_amount || 0);
                             this.addProductId = '';
                             this.addProductQty = 1;
                             this.editError = '';
@@ -459,7 +504,9 @@
                     body: JSON.stringify({
                         items: this.editItems.map(i => ({ id: i.product_id, quantity: i.quantity })),
                         paid_amount: this.editPaidAmount,
-                        payment_method: this.editPaymentMethod
+                        payment_method: this.editPaymentMethod,
+                        discount_percent: this.editDiscountMode === 'percent' && this.editDiscountInputValue > 0 ? this.editDiscountInputValue : null,
+                        discount_amount: this.editDiscountAmount
                     })
                 })
                 .then(res => res.json())

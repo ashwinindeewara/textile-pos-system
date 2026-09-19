@@ -109,7 +109,19 @@
     <div class="divider"></div>
 
     <!-- Totals -->
+    @php($receiptSubtotal = (float) $order->items->sum('subtotal'))
+    @php($receiptDiscount = (float) $order->discount_amount)
     <table style="font-size: 12px;">
+        <tr>
+            <td>SUB TOTAL:</td>
+            <td class="text-right">{{ $shopSettings['currency_symbol'] ?? 'LKR' }} {{ number_format($receiptSubtotal, 2) }}</td>
+        </tr>
+        @if($receiptDiscount > 0)
+            <tr>
+                <td>DISCOUNT{{ !empty($order->discount_percent) ? ' (' . rtrim(rtrim(number_format($order->discount_percent, 2), '0'), '.') . '%)' : '' }}:</td>
+                <td class="text-right">- {{ $shopSettings['currency_symbol'] ?? 'LKR' }} {{ number_format($receiptDiscount, 2) }}</td>
+            </tr>
+        @endif
         <tr>
             <td class="font-bold">GRAND TOTAL:</td>
             <td class="text-right font-bold" style="font-size: 14px;">{{ $shopSettings['currency_symbol'] ?? 'LKR' }} {{ number_format($order->total_amount, 2) }}</td>

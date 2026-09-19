@@ -13,7 +13,7 @@ class InvoiceService
      * Update a completed invoice: replace items, adjust stock for quantity
      * differences, remove lines, and recompute payment totals.
      */
-    public function update(Order $order, array $items, $paidAmount, $paymentMethod)
+    public function update(Order $order, array $items, $paidAmount, $paymentMethod, $discountPercent = null, $discountAmount = null)
     {
         if ($order->status !== 'completed') {
             throw new \Exception('Only completed invoices can be edited.');
@@ -24,11 +24,11 @@ class InvoiceService
         $paidAmount = (float) $paidAmount;
         $paymentMethod = $paymentMethod ?: $order->payment_method;
 
-        DB::transaction(function () use ($order, $items, $paidAmount, $paymentMethod) {
+        DB::transaction(function () use ($order, $items, $paidAmount, $paymentMethod, $discountPercent, $discountAmount) {
             $existingItems = $order->items->keyBy('product_id');
             $newProductIds = array_column($items, 'id');
 
-            $totalAmount = 0;
+            $subtotal = 0;
             $newItems = [];
 
             foreach ($items as $item) {
@@ -45,8 +45,8 @@ class InvoiceService
                 $product->save();
 
                 $unitPrice = (float) $product->price;
-                $subtotal = $unitPrice * $newQty;
-                $totalAmount += $subtotal;
+                $itemSubtotal = $unitPrice * $newQty;
+                $subtotal += $itemSubtotal;
 
                 $newItems[] = [
                     'order_id' => $order->id,
@@ -55,7 +55,7 @@ class InvoiceService
                     'item_code' => $product->item_code,
                     'unit_price' => $unitPrice,
                     'quantity' => $newQty,
-                    'subtotal' => $subtotal,
+                    'subtotal' => $itemSubtotal,
                 ];
             }
 
@@ -70,6 +70,14 @@ class InvoiceService
                 }
             }
 
+            $discountPercent = (float) $discountPercent;
+            $discountAmount = (float) $discountAmount;
+            if ($discountAmount <= 0 && $discountPercent > 0) {
+                $discountAmount = round($subtotal * $discountPercent / 100, 2);
+            }
+            $discountAmount = max(0, min(round($discountAmount, 2), $subtotal));
+            $totalAmount = round($subtotal - $discountAmount, 2);
+
             if ($paidAmount < $totalAmount) {
                 throw new \Exception('Insufficient payment: Total is LKR ' . number_format($totalAmount, 2) . ', but paid amount is LKR ' . number_format($paidAmount, 2));
             }
@@ -81,6 +89,8 @@ class InvoiceService
 
             $order->update([
                 'total_amount' => $totalAmount,
+                'discount_percent' => $discountPercent > 0 ? $discountPercent : null,
+                'discount_amount' => $discountAmount,
                 'paid_amount' => $paidAmount,
                 'change_amount' => $paidAmount - $totalAmount,
                 'payment_method' => $paymentMethod,

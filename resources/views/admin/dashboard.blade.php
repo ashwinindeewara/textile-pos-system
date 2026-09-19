@@ -21,6 +21,11 @@
                 <i data-lucide="plus" class="w-4 h-4"></i>
                 Add New Product
             </a>
+            <a href="{{ route('admin.users.index') }}" 
+               class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center gap-2">
+                <i data-lucide="users" class="w-4 h-4"></i>
+                User Accounts
+            </a>
         </div>
     </div>
 

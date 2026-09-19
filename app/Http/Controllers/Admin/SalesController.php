@@ -53,6 +53,8 @@ class SalesController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'paid_amount' => 'required|numeric|min:0',
             'payment_method' => 'required|string|in:cash,card',
+            'discount_percent' => 'nullable|numeric|min:0|max:100',
+            'discount_amount' => 'nullable|numeric|min:0',
         ]);
 
         try {
@@ -60,7 +62,9 @@ class SalesController extends Controller
                 $order,
                 $request->input('items'),
                 $request->input('paid_amount'),
-                $request->input('payment_method')
+                $request->input('payment_method'),
+                $request->input('discount_percent'),
+                $request->input('discount_amount')
             );
 
             return response()->json([

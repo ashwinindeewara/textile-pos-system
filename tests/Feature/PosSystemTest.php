@@ -158,4 +158,128 @@ class PosSystemTest extends TestCase
             'quantity' => $purchaseQty,
         ]);
     }
+
+    public function test_checkout_applies_percentage_discount_to_total(): void
+    {
+        $cashier = User::where('role', 'cashier')->first();
+        $product = Product::where('item_code', 'TSH-001')->first(); // price 1800.00
+
+        $response = $this->actingAs($cashier)->postJson('/pos/checkout', [
+            'items' => [
+                [
+                    'id' => $product->id,
+                    'quantity' => 5,
+                ]
+            ],
+            'paid_amount' => 8100.00,
+            'payment_method' => 'cash',
+            'discount_percent' => 10,
+            'discount_amount' => 900.00,
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson(['success' => true]);
+
+        // Subtotal 9000.00 - 10% (900.00) = 8100.00 grand total
+        $this->assertDatabaseHas('orders', [
+            'cashier_id' => $cashier->id,
+            'status' => 'completed',
+            'total_amount' => 8100.00,
+            'discount_percent' => 10,
+            'discount_amount' => 900.00,
+            'change_amount' => 0.00,
+        ]);
+    }
+
+    public function test_checkout_applies_fixed_amount_discount_to_total(): void
+    {
+        $cashier = User::where('role', 'cashier')->first();
+        $product = Product::where('item_code', 'TSH-001')->first(); // price 1800.00
+
+        $response = $this->actingAs($cashier)->postJson('/pos/checkout', [
+            'items' => [
+                [
+                    'id' => $product->id,
+                    'quantity' => 5,
+                ]
+            ],
+            'paid_amount' => 8500.00,
+            'payment_method' => 'cash',
+            'discount_percent' => null,
+            'discount_amount' => 500.00,
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson(['success' => true]);
+
+        // Subtotal 9000.00 - 500.00 = 8500.00 grand total
+        $this->assertDatabaseHas('orders', [
+            'cashier_id' => $cashier->id,
+            'status' => 'completed',
+            'total_amount' => 8500.00,
+            'discount_percent' => null,
+            'discount_amount' => 500.00,
+            'change_amount' => 0.00,
+        ]);
+    }
+
+    public function test_checkout_rejects_payment_below_discounted_total(): void
+    {
+        $cashier = User::where('role', 'cashier')->first();
+        $product = Product::where('item_code', 'TSH-001')->first(); // price 1800.00
+
+        $response = $this->actingAs($cashier)->postJson('/pos/checkout', [
+            'items' => [
+                [
+                    'id' => $product->id,
+                    'quantity' => 5,
+                ]
+            ],
+            'paid_amount' => 8000.00, // below discounted 8100.00
+            'payment_method' => 'cash',
+            'discount_percent' => 10,
+            'discount_amount' => 900.00,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJson(['success' => false]);
+    }
+
+    public function test_hold_order_stores_discount_and_recall_returns_it(): void
+    {
+        $cashier = User::where('role', 'cashier')->first();
+        $product = Product::where('item_code', 'TSH-001')->first(); // price 1800.00
+
+        $holdResponse = $this->actingAs($cashier)->postJson('/pos/hold', [
+            'items' => [
+                [
+                    'id' => $product->id,
+                    'quantity' => 3,
+                ]
+            ],
+            'discount_percent' => 10,
+            'discount_amount' => 540.00,
+        ]);
+
+        $holdResponse->assertStatus(200)
+            ->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $holdResponse->json('hold_id'),
+            'total_amount' => 4860.00, // 5400.00 - 540.00
+            'discount_percent' => 10,
+            'discount_amount' => 540.00,
+        ]);
+
+        $recallResponse = $this->actingAs($cashier)->postJson("/pos/recall/{$holdResponse->json('hold_id')}");
+
+        $recallResponse->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'discount_percent' => 10,
+                'discount_amount' => 540.00,
+            ]);
+
+        $this->assertCount(1, $recallResponse->json('items'));
+    }
 }

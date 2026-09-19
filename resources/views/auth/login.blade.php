@@ -92,25 +92,6 @@
                 </button>
             </form>
 
-            <!-- Quick Demo Credentials helper -->
-            <div class="mt-8 pt-6 border-t border-slate-800/80">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center mb-3">Quick Demo Login</p>
-                <div class="grid grid-cols-2 gap-2">
-                    <button type="button" 
-                            @click="email = 'admin@textilepos.com'; password = 'password'"
-                            class="px-3 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-xl text-xs font-medium transition-all text-left flex items-center gap-2">
-                        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-indigo-400"></i>
-                        <span><strong>Admin</strong> Account</span>
-                    </button>
-                    <button type="button" 
-                            @click="email = 'cashier@textilepos.com'; password = 'password'"
-                            class="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs font-medium transition-all text-left flex items-center gap-2">
-                        <i data-lucide="shopping-bag" class="w-3.5 h-3.5 text-emerald-400"></i>
-                        <span><strong>Cashier</strong> Account</span>
-                    </button>
-                </div>
-            </div>
-
         </div>
 
     </div>

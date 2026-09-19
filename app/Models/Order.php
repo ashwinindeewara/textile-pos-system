@@ -13,6 +13,8 @@ class Order extends Model
         'invoice_number',
         'cashier_id',
         'total_amount',
+        'discount_percent',
+        'discount_amount',
         'paid_amount',
         'change_amount',
         'payment_method',
@@ -21,6 +23,8 @@ class Order extends Model
 
     protected $casts = [
         'total_amount' => 'decimal:2',
+        'discount_percent' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',
         'change_amount' => 'decimal:2',
     ];

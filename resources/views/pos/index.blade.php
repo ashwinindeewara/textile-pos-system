@@ -1,10 +1,10 @@
 @extends('layouts.app', ['title' => 'Cashier POS Billing Terminal'])
 
 @section('content')
-<div x-data="posSystem()" x-init="init()" class="h-[calc(100vh-4rem)] flex flex-col md:flex-row overflow-hidden bg-slate-950">
+<div x-data="posSystem()" x-init="init()" class="md:h-[calc(100vh-4rem)] flex flex-col md:flex-row md:overflow-hidden bg-slate-950">
 
     <!-- LEFT SIDE: Product Catalog & Item Code Scanner -->
-    <div class="flex-1 flex flex-col h-full overflow-hidden border-r border-slate-800/80">
+    <div class="flex-1 flex flex-col md:h-full md:overflow-hidden border-r border-slate-800/80">
         
         <!-- Top Toolbar & Barcode Input -->
         <div class="p-4 bg-slate-900 border-b border-slate-800 flex flex-col sm:flex-row gap-3 items-center justify-between">
@@ -125,7 +125,7 @@
     </div>
 
     <!-- RIGHT SIDE: Shopping Cart Terminal -->
-    <div class="w-full md:w-96 lg:w-[420px] bg-slate-900 flex flex-col h-full border-l border-slate-800/80 shadow-2xl">
+    <div class="w-full md:w-96 lg:w-[420px] bg-slate-900 flex flex-col md:h-full border-l border-slate-800/80 shadow-2xl">
         
         <!-- Cart Header -->
         <div class="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
@@ -206,9 +206,54 @@
                     <span>Tax / Vat (0%)</span>
                     <span class="text-white font-semibold"><span x-text="currencySymbol"></span> 0.00</span>
                 </div>
+
+                <!-- Discount Input -->
+                <div x-show="cart.length > 0" class="pt-1.5 space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400 font-medium">Discount</span>
+                        <div class="flex bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-[10px] font-bold">
+                            <button @click="discountMode = 'percent'; discountInput = ''"
+                                    :class="discountMode === 'percent' ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-slate-200'"
+                                    class="px-2 py-0.5 rounded-md transition-all">%</button>
+                            <button @click="discountMode = 'amount'; discountInput = ''"
+                                    :class="discountMode === 'amount' ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-slate-200'"
+                                    class="px-2 py-0.5 rounded-md transition-all">Amt</button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="text" inputmode="decimal" x-model="discountInput"
+                               :placeholder="discountMode === 'percent' ? 'Enter % discount' : 'Enter amount discount'"
+                               class="flex-1 min-w-0 px-3 py-2 bg-slate-950 border border-slate-800 focus:border-brand-500 text-white font-bold text-xs rounded-lg focus:outline-none transition-all text-right">
+                        <button @click="discountInput = ''" title="Clear discount"
+                                class="px-2.5 py-2 bg-slate-800 hover:bg-rose-600 text-slate-400 hover:text-white font-bold text-[10px] rounded-lg transition-all">
+                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                    <div x-show="discountMode === 'percent'" class="flex items-center gap-1.5">
+                        <template x-for="d in [5, 10, 20]">
+                            <button @click="discountMode = 'percent'; discountInput = String(d)"
+                                    class="flex-1 py-1 bg-slate-900 border border-slate-800 hover:border-brand-500/50 text-slate-300 hover:text-white font-bold text-[10px] rounded-lg transition-all"
+                                    x-text="d + '%'"></button>
+                        </template>
+                    </div>
+                    <div x-show="discountMode === 'amount'" class="flex items-center gap-1.5">
+                        <template x-for="d in [50, 100, 200]">
+                            <button @click="discountMode = 'amount'; discountInput = String(d)"
+                                    class="flex-1 py-1 bg-slate-900 border border-slate-800 hover:border-brand-500/50 text-slate-300 hover:text-white font-bold text-[10px] rounded-lg transition-all"
+                                    x-text="currencySymbol + ' ' + d"></button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Discount Applied Display -->
+                <div class="flex justify-between text-slate-400 font-medium" x-show="discountAmount > 0">
+                    <span>Discount <span x-text="discountPercentLabel"></span></span>
+                    <span class="text-rose-400 font-semibold">- <span x-text="currencySymbol"></span> <span x-text="formatNumber(discountAmount)"></span></span>
+                </div>
+
                 <div class="flex justify-between text-base font-extrabold text-white pt-2 border-t border-slate-800">
                     <span class="text-brand-400">Grand Total</span>
-                    <span class="text-emerald-400 text-lg"><span x-text="currencySymbol"></span> <span x-text="formatNumber(cartTotal)"></span></span>
+                    <span class="text-emerald-400 text-lg"><span x-text="currencySymbol"></span> <span x-text="formatNumber(grandTotal)"></span></span>
                 </div>
             </div>
 
@@ -231,7 +276,7 @@
                         :class="cart.length === 0 ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-500' : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/30'"
                         class="col-span-2 py-3 pl-4 pr-2.5 font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-xs sm:text-sm">
                     <i data-lucide="credit-card" class="w-4 h-4 shrink-0"></i>
-                    <span class="whitespace-nowrap overflow-hidden text-ellipsis min-w-0">Checkout (<span x-text="currencySymbol"></span> <span x-text="formatNumber(cartTotal)"></span>)</span>
+                    <span class="whitespace-nowrap overflow-hidden text-ellipsis min-w-0">Checkout (<span x-text="currencySymbol"></span> <span x-text="formatNumber(grandTotal)"></span>)</span>
                 </button>
 
             </div>
@@ -340,7 +385,7 @@
             <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800/80 flex items-center justify-between">
                 <div>
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Due</span>
-                    <div class="text-2xl font-extrabold text-white"><span x-text="currencySymbol"></span> <span x-text="formatNumber(cartTotal)"></span></div>
+                    <div class="text-2xl font-extrabold text-white"><span x-text="currencySymbol"></span> <span x-text="formatNumber(grandTotal)"></span></div>
                 </div>
                 <div class="text-right">
                     <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Change Due</span>
@@ -410,7 +455,7 @@
             <div>
                 <span class="text-xs font-semibold text-slate-400 block mb-2">Quick Cash Amounts:</span>
                 <div class="grid grid-cols-4 gap-2">
-                    <button type="button" @click="paidAmountStr = String(cartTotal)" class="py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white rounded-lg transition-all">Exact</button>
+                    <button type="button" @click="paidAmountStr = String(grandTotal)" class="py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white rounded-lg transition-all">Exact</button>
                     <button type="button" @click="paidAmountStr = '1000'" class="py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 rounded-lg transition-all">1,000</button>
                     <button type="button" @click="paidAmountStr = '5000'" class="py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 rounded-lg transition-all">5,000</button>
                     <button type="button" @click="paidAmountStr = '10000'" class="py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 rounded-lg transition-all">10,000</button>
@@ -427,8 +472,8 @@
                 </button>
                 <button type="button" 
                         @click="processCheckout()" 
-                        :disabled="isSubmitting || paidAmount < cartTotal"
-                        :class="(isSubmitting || paidAmount < cartTotal) ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-500' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30'"
+                        :disabled="isSubmitting || paidAmount < grandTotal"
+                        :class="(isSubmitting || paidAmount < grandTotal) ? 'opacity-50 cursor-not-allowed bg-slate-800 text-slate-500' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30'"
                         class="w-2/3 py-3 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2">
                     <span x-show="!isSubmitting" class="flex items-center gap-2">
                         <i data-lucide="printer" class="w-4 h-4"></i>
@@ -589,8 +634,28 @@
                 </div>
             </div>
 
+            <!-- Discount -->
+            <div>
+                <label class="block text-xs font-semibold uppercase text-slate-400 mb-2">Discount</label>
+                <div class="flex items-center gap-2">
+                    <div class="flex bg-slate-950 border border-slate-800 rounded-xl p-0.5 text-[10px] font-bold">
+                        <button type="button" @click="invoiceEditDiscountMode = 'percent'"
+                                :class="invoiceEditDiscountMode === 'percent' ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-slate-200'"
+                                class="px-2.5 py-1.5 rounded-lg transition-all">%</button>
+                        <button type="button" @click="invoiceEditDiscountMode = 'amount'"
+                                :class="invoiceEditDiscountMode === 'amount' ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-slate-200'"
+                                class="px-2.5 py-1.5 rounded-lg transition-all">Amt</button>
+                    </div>
+                    <input type="number" step="0.01" min="0" x-model.number="invoiceEditDiscountInput"
+                           :placeholder="invoiceEditDiscountMode === 'percent' ? 'Discount percentage' : 'Discount amount'"
+                           class="flex-1 bg-slate-950 border border-slate-800 text-white text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-brand-500">
+                </div>
+            </div>
+
             <!-- Live Totals -->
             <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 text-xs space-y-1 text-right">
+                <div>Subtotal: <span class="text-slate-300"><span x-text="currencySymbol"></span> <span x-text="formatNumber(invoiceEditSubtotal)"></span></span></div>
+                <div x-show="invoiceEditDiscountAmount > 0">Discount: <span class="text-rose-400">- <span x-text="currencySymbol"></span> <span x-text="formatNumber(invoiceEditDiscountAmount)"></span></span></div>
                 <div>New Total: <strong class="text-emerald-400"><span x-text="currencySymbol"></span> <span x-text="formatNumber(invoiceEditTotal)"></span></strong></div>
                 <div>Paid Amount: <span class="text-slate-300"><span x-text="currencySymbol"></span> <span x-text="formatNumber(invoiceEditPaidAmount || 0)"></span></span></div>
                 <div>Change Returned: <span :class="invoiceEditChange >= 0 ? 'text-emerald-400' : 'text-rose-400'"><span x-text="currencySymbol"></span> <span x-text="formatNumber(Math.max(invoiceEditChange, 0))"></span></span></div>
@@ -643,12 +708,16 @@
             invoiceEditItems: [],
             invoiceEditPaidAmount: 0,
             invoiceEditPaymentMethod: 'cash',
+            invoiceEditDiscountMode: 'amount',
+            invoiceEditDiscountInput: '0',
             invoiceAddProductId: '',
             invoiceAddProductQty: 1,
             isSavingInvoice: false,
             invoiceEditError: '',
             paidAmountStr: '0',
             paymentMethod: 'cash',
+            discountMode: 'amount',
+            discountInput: '',
             isSubmitting: false,
             isHolding: false,
             checkoutError: '',
@@ -680,12 +749,39 @@
                 return this.cart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
             },
 
+            get discountInputValue() {
+                return parseFloat(this.discountInput) || 0;
+            },
+
+            get discountAmount() {
+                if (this.discountInputValue <= 0) return 0;
+                let amount;
+                if (this.discountMode === 'percent') {
+                    amount = (this.cartTotal * this.discountInputValue) / 100;
+                } else {
+                    amount = this.discountInputValue;
+                }
+                amount = Math.min(amount, this.cartTotal);
+                return Math.round(amount * 100) / 100;
+            },
+
+            get discountPercentLabel() {
+                if (this.discountMode === 'percent' && this.discountInputValue > 0) {
+                    return '(' + this.discountInputValue + '%)';
+                }
+                return '';
+            },
+
+            get grandTotal() {
+                return Math.max(0, Math.round((this.cartTotal - this.discountAmount) * 100) / 100);
+            },
+
             get paidAmount() {
                 return parseFloat(this.paidAmountStr) || 0;
             },
 
             get changeAmount() {
-                return (this.paidAmount || 0) - this.cartTotal;
+                return (this.paidAmount || 0) - this.grandTotal;
             },
 
             padInput(key) {
@@ -704,8 +800,28 @@
                 this.paidAmountStr = str;
             },
 
-            get invoiceEditTotal() {
+            get invoiceEditSubtotal() {
                 return this.invoiceEditItems.reduce((sum, i) => sum + (i.unit_price * i.quantity), 0);
+            },
+
+            get invoiceEditDiscountInputValue() {
+                return parseFloat(this.invoiceEditDiscountInput) || 0;
+            },
+
+            get invoiceEditDiscountAmount() {
+                if (this.invoiceEditDiscountInputValue <= 0) return 0;
+                let amount;
+                if (this.invoiceEditDiscountMode === 'percent') {
+                    amount = (this.invoiceEditSubtotal * this.invoiceEditDiscountInputValue) / 100;
+                } else {
+                    amount = this.invoiceEditDiscountInputValue;
+                }
+                amount = Math.min(amount, this.invoiceEditSubtotal);
+                return Math.round(amount * 100) / 100;
+            },
+
+            get invoiceEditTotal() {
+                return Math.max(0, Math.round((this.invoiceEditSubtotal - this.invoiceEditDiscountAmount) * 100) / 100);
             },
 
             get invoiceEditChange() {
@@ -739,6 +855,8 @@
                 }));
                 this.invoiceEditPaidAmount = parseFloat(inv.paid_amount);
                 this.invoiceEditPaymentMethod = inv.payment_method;
+                this.invoiceEditDiscountMode = inv.discount_percent && inv.discount_percent > 0 ? 'percent' : 'amount';
+                this.invoiceEditDiscountInput = inv.discount_percent && inv.discount_percent > 0 ? String(inv.discount_percent) : String(inv.discount_amount || 0);
                 this.invoiceAddProductId = '';
                 this.invoiceAddProductQty = 1;
                 this.invoiceEditError = '';
@@ -798,7 +916,9 @@
                     body: JSON.stringify({
                         items: this.invoiceEditItems.map(i => ({ id: i.product_id, quantity: i.quantity })),
                         paid_amount: this.invoiceEditPaidAmount,
-                        payment_method: this.invoiceEditPaymentMethod
+                        payment_method: this.invoiceEditPaymentMethod,
+                        discount_percent: this.invoiceEditDiscountMode === 'percent' && this.invoiceEditDiscountInputValue > 0 ? this.invoiceEditDiscountInputValue : null,
+                        discount_amount: this.invoiceEditDiscountAmount
                     })
                 })
                 .then(res => res.json())
@@ -851,13 +971,18 @@
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
-                    body: JSON.stringify({ items: this.cart })
+                    body: JSON.stringify({
+                        items: this.cart,
+                        discount_percent: this.discountMode === 'percent' && this.discountInputValue > 0 ? this.discountInputValue : null,
+                        discount_amount: this.discountAmount
+                    })
                 })
                 .then(res => res.json())
                 .then(data => {
                     this.isHolding = false;
                     if (data.success) {
                         this.cart = [];
+                        this.discountInput = '';
                         this.fetchHeldOrders();
                         alert('Current bill parked on hold.');
                     } else {
@@ -892,6 +1017,8 @@
                 .then(data => {
                     if (data.success) {
                         this.cart = data.items;
+                        this.discountMode = data.discount_percent && data.discount_percent > 0 ? 'percent' : 'amount';
+                        this.discountInput = data.discount_percent && data.discount_percent > 0 ? String(data.discount_percent) : (data.discount_amount > 0 ? String(data.discount_amount) : '');
                         this.showHeldModal = false;
                         this.fetchHeldOrders();
                     } else {
@@ -992,18 +1119,19 @@
             clearCart() {
                 if (confirm('Clear all items from current bill?')) {
                     this.cart = [];
+                    this.discountInput = '';
                 }
             },
 
             openPayModal() {
                 if (this.cart.length === 0) return;
-                this.paidAmountStr = String(this.cartTotal);
+                this.paidAmountStr = String(this.grandTotal);
                 this.checkoutError = '';
                 this.showPayModal = true;
             },
 
             processCheckout() {
-                if (this.paidAmount < this.cartTotal) {
+                if (this.paidAmount < this.grandTotal) {
                     this.checkoutError = 'Paid amount cannot be less than Grand Total.';
                     return;
                 }
@@ -1020,7 +1148,9 @@
                     body: JSON.stringify({
                         items: this.cart,
                         paid_amount: this.paidAmount,
-                        payment_method: this.paymentMethod
+                        payment_method: this.paymentMethod,
+                        discount_percent: this.discountMode === 'percent' && this.discountInputValue > 0 ? this.discountInputValue : null,
+                        discount_amount: this.discountAmount
                     })
                 })
                 .then(res => res.json())
@@ -1037,6 +1167,7 @@
                         });
 
                         this.cart = [];
+                        this.discountInput = '';
                         this.showPayModal = false;
                         
                         // Refocus barcode input

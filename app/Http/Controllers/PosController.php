@@ -14,6 +14,30 @@ use Illuminate\Support\Str;
 
 class PosController extends Controller
 {
+    /**
+     * Apply a discount to a subtotal and return the discounted totals.
+     * The explicit amount is authoritative (computed precisely on the
+     * client) and the percentage is recorded as metadata; the discount is
+     * never allowed to exceed the subtotal.
+     */
+    private function applyDiscount($subtotal, $discountPercent, $discountAmount)
+    {
+        $discountPercent = (float) $discountPercent;
+        $discountAmount = (float) $discountAmount;
+
+        if ($discountAmount <= 0 && $discountPercent > 0) {
+            $discountAmount = round($subtotal * $discountPercent / 100, 2);
+        }
+
+        $discountAmount = max(0, min(round($discountAmount, 2), (float) $subtotal));
+
+        return [
+            'discount_percent' => $discountPercent > 0 ? $discountPercent : null,
+            'discount_amount' => $discountAmount,
+            'total_amount' => round((float) $subtotal - $discountAmount, 2),
+        ];
+    }
+
     public function index(Request $request)
     {
         $categories = Category::orderBy('name')->get();
@@ -80,22 +104,26 @@ class PosController extends Controller
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'discount_percent' => 'nullable|numeric|min:0|max:100',
+            'discount_amount' => 'nullable|numeric|min:0',
         ]);
 
         $cartItems = $request->input('items');
+        $discountPercent = $request->input('discount_percent');
+        $discountAmount = $request->input('discount_amount');
         $cashierId = Auth::id();
 
         try {
-            $heldOrder = DB::transaction(function () use ($cartItems, $cashierId) {
-                $totalAmount = 0;
+            $heldOrder = DB::transaction(function () use ($cartItems, $discountPercent, $discountAmount, $cashierId) {
+                $subtotal = 0;
                 $itemsToSave = [];
 
                 foreach ($cartItems as $item) {
                     $product = Product::where('id', $item['id'])->firstOrFail();
                     $reqQty = (int) $item['quantity'];
                     $unitPrice = (float) $product->price;
-                    $subtotal = $unitPrice * $reqQty;
-                    $totalAmount += $subtotal;
+                    $itemSubtotal = $unitPrice * $reqQty;
+                    $subtotal += $itemSubtotal;
 
                     $itemsToSave[] = [
                         'product_id' => $product->id,
@@ -103,16 +131,20 @@ class PosController extends Controller
                         'item_code' => $product->item_code,
                         'unit_price' => $unitPrice,
                         'quantity' => $reqQty,
-                        'subtotal' => $subtotal,
+                        'subtotal' => $itemSubtotal,
                     ];
                 }
+
+                $discount = $this->applyDiscount($subtotal, $discountPercent, $discountAmount);
 
                 $invoiceNumber = 'HOLD-' . date('Ymd') . '-' . strtoupper(Str::random(5));
 
                 $order = Order::create([
                     'invoice_number' => $invoiceNumber,
                     'cashier_id' => $cashierId,
-                    'total_amount' => $totalAmount,
+                    'total_amount' => $discount['total_amount'],
+                    'discount_percent' => $discount['discount_percent'],
+                    'discount_amount' => $discount['discount_amount'],
                     'paid_amount' => 0.00,
                     'change_amount' => 0.00,
                     'payment_method' => 'cash',
@@ -194,6 +226,8 @@ class PosController extends Controller
             'success' => true,
             'message' => 'Order recalled successfully!',
             'items' => $cartItems,
+            'discount_percent' => $order->discount_percent ? (float) $order->discount_percent : null,
+            'discount_amount' => (float) $order->discount_amount,
         ]);
     }
 
@@ -253,6 +287,8 @@ class PosController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'paid_amount' => 'required|numeric|min:0',
             'payment_method' => 'required|string|in:cash,card',
+            'discount_percent' => 'nullable|numeric|min:0|max:100',
+            'discount_amount' => 'nullable|numeric|min:0',
         ]);
 
         try {
@@ -260,7 +296,9 @@ class PosController extends Controller
                 $order,
                 $request->input('items'),
                 $request->input('paid_amount'),
-                $request->input('payment_method')
+                $request->input('payment_method'),
+                $request->input('discount_percent'),
+                $request->input('discount_amount')
             );
 
             return response()->json([
@@ -287,16 +325,20 @@ class PosController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'paid_amount' => 'required|numeric|min:0',
             'payment_method' => 'required|string|in:cash,card',
+            'discount_percent' => 'nullable|numeric|min:0|max:100',
+            'discount_amount' => 'nullable|numeric|min:0',
         ]);
 
         $cartItems = $request->input('items');
         $paidAmount = (float) $request->input('paid_amount');
         $paymentMethod = $request->input('payment_method');
+        $discountPercent = $request->input('discount_percent');
+        $discountAmount = $request->input('discount_amount');
         $cashierId = Auth::id();
 
         try {
-            $order = DB::transaction(function () use ($cartItems, $paidAmount, $paymentMethod, $cashierId) {
-                $totalAmount = 0;
+            $order = DB::transaction(function () use ($cartItems, $paidAmount, $paymentMethod, $discountPercent, $discountAmount, $cashierId) {
+                $subtotal = 0;
                 $itemsToSave = [];
 
                 foreach ($cartItems as $item) {
@@ -310,8 +352,8 @@ class PosController extends Controller
                     }
 
                     $unitPrice = (float) $product->price;
-                    $subtotal = $unitPrice * $reqQty;
-                    $totalAmount += $subtotal;
+                    $itemSubtotal = $unitPrice * $reqQty;
+                    $subtotal += $itemSubtotal;
 
                     // Deduct stock directly on product record
                     $product->stock_qty -= $reqQty;
@@ -323,9 +365,12 @@ class PosController extends Controller
                         'item_code' => $product->item_code,
                         'unit_price' => $unitPrice,
                         'quantity' => $reqQty,
-                        'subtotal' => $subtotal,
+                        'subtotal' => $itemSubtotal,
                     ];
                 }
+
+                $discount = $this->applyDiscount($subtotal, $discountPercent, $discountAmount);
+                $totalAmount = $discount['total_amount'];
 
                 if ($paidAmount < $totalAmount) {
                     throw new \Exception("Insufficient payment: Total is LKR " . number_format($totalAmount, 2) . ", but paid amount is LKR " . number_format($paidAmount, 2));
@@ -340,6 +385,8 @@ class PosController extends Controller
                     'invoice_number' => $invoiceNumber,
                     'cashier_id' => $cashierId,
                     'total_amount' => $totalAmount,
+                    'discount_percent' => $discount['discount_percent'],
+                    'discount_amount' => $discount['discount_amount'],
                     'paid_amount' => $paidAmount,
                     'change_amount' => $changeAmount,
                     'payment_method' => $paymentMethod,
