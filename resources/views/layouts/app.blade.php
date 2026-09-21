@@ -78,7 +78,7 @@
             <div class="flex items-center justify-between gap-4 h-16">
 
                 <!-- Brand / Logo -->
-                <a href="{{ auth()->user()->isAdmin() ? route('admin.dashboard') : route('pos.index') }}" class="flex items-center gap-2.5 min-w-0 shrink-0">
+                <a href="{{ auth()->user()->isSuperAdmin() ? route('superadmin.dashboard') : (auth()->user()->isAdmin() ? route('admin.dashboard') : route('pos.index')) }}" class="flex items-center gap-2.5 min-w-0 shrink-0">
                     @if(!empty($shopSettings['logo_path']))
                         <img src="{{ asset($shopSettings['logo_path']) }}" alt="Logo" class="w-9 h-9 rounded-xl object-contain bg-white p-1 shadow-lg shadow-brand-500/20 shrink-0">
                     @else
@@ -132,6 +132,14 @@
                            class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all {{ request()->routeIs('admin.settings.*') ? 'bg-brand-600 text-white shadow-md shadow-brand-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                             <i data-lucide="settings" class="w-4 h-4"></i>
                             Settings
+                        </a>
+                    @endif
+
+                    @if(auth()->user()->isSuperAdmin())
+                        <a href="{{ route('superadmin.dashboard') }}" 
+                           class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all {{ request()->routeIs('superadmin.*') ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                            <i data-lucide="shield" class="w-4 h-4"></i>
+                            Subscription
                         </a>
                     @endif
                 </nav>
@@ -208,6 +216,14 @@
                        class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('admin.settings.*') ? 'bg-brand-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                         <i data-lucide="settings" class="w-4 h-4"></i>
                         Shop Settings
+                    </a>
+                @endif
+
+                @if(auth()->user()->isSuperAdmin())
+                    <a href="{{ route('superadmin.dashboard') }}"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('superadmin.*') ? 'bg-emerald-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                        <i data-lucide="shield" class="w-4 h-4"></i>
+                        Subscription
                     </a>
                 @endif
 

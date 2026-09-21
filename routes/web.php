@@ -4,10 +4,12 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\SalesController;
+use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PosController;
+use App\Http\Controllers\SuperAdminController;
 use Illuminate\Support\Facades\Route;
 
 // Redirect root to login
@@ -20,9 +22,27 @@ Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// Hidden Super Admin (Vendor) Authentication - Not linked from the store UI
+Route::get('/superadmin/login', [SuperAdminController::class, 'showLoginForm'])->name('superadmin.login');
+Route::post('/superadmin/login', [SuperAdminController::class, 'login'])->name('superadmin.login.submit');
+
 // Authenticated Routes
 Route::middleware(['auth'])->group(function () {
-    
+
+    // System Locked Screen (exempt from the system.lock middleware)
+    Route::get('/system/locked', [SuperAdminController::class, 'locked'])->name('system.locked');
+
+    // Super Admin Dashboard (Vendor subscription control)
+    Route::middleware(['role:super_admin'])->prefix('superadmin')->name('superadmin.')->group(function () {
+        Route::get('/dashboard', [SuperAdminController::class, 'dashboard'])->name('dashboard');
+        Route::post('/subscription', [SuperAdminController::class, 'updatePlan'])->name('subscription.update');
+        Route::post('/lock', [SuperAdminController::class, 'toggleLock'])->name('lock.toggle');
+    });
+});
+
+// Store Routes (POS, receipts, and admin panel) - blocked when subscription lock is active
+Route::middleware(['auth', 'system.lock'])->group(function () {
+
     // Receipt Printing (Accessible by Cashier & Admin)
     Route::get('/orders/{order}/receipt', [OrderController::class, 'receipt'])->name('orders.receipt');
 
@@ -60,8 +80,8 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/sales/{order}', [SalesController::class, 'destroy'])->name('sales.destroy');
 
         // Shop Settings Management
-        Route::get('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');
-        Route::post('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
+        Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
+        Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
 
         // User / Staff Account Management
         Route::get('/users', [UserController::class, 'index'])->name('users.index');

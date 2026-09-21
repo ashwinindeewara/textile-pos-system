@@ -22,11 +22,11 @@ class UserController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
-        $users = $query->orderBy('role')->orderBy('name')->paginate(15);
+        $users = $query->where('role', '!=', 'super_admin')->orderBy('role')->orderBy('name')->paginate(15);
 
         return view('admin.users.index', compact('users'));
     }
@@ -76,6 +76,11 @@ class UserController extends Controller
 
     public function destroy(Request $request, User $user)
     {
+        if ($user->isSuperAdmin()) {
+            return redirect()->route('admin.users.index')
+                ->with('error', 'Vendor accounts cannot be managed from the store panel.');
+        }
+
         if ($user->id === Auth::id()) {
             return redirect()->route('admin.users.index')
                 ->with('error', 'You cannot delete your own account.');
