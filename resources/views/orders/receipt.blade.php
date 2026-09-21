@@ -59,9 +59,7 @@
 
     <!-- Receipt Header (Dynamic Shop Settings) -->
     <div class="text-center">
-        @if(!empty($shopSettings['logo_path']))
-            <img src="{{ asset($shopSettings['logo_path']) }}" alt="Shop Logo" style="max-height: 45px; max-width: 140px; margin-bottom: 4px; object-contain: contain;">
-        @endif
+        
         <h2 style="margin: 0; font-size: 16px; font-weight: 900; text-transform: uppercase;">{{ $shopSettings['shop_name'] ?? 'SILK & DENIM' }}</h2>
         <p style="margin: 2px 0 0 0; font-size: 10px;">{{ $shopSettings['shop_address'] ?? '123 Fashion Street, Colombo' }}</p>
         <p style="margin: 2px 0 0 0; font-size: 10px;">Tel: {{ $shopSettings['phone_number'] ?? '+94 11 234 5678' }}</p>
@@ -142,7 +140,6 @@
     <div class="text-center" style="font-size: 10px; margin-top: 8px;">
         <p style="margin: 0; font-weight: bold;">THANK YOU FOR SHOPPING WITH US!</p>
         <p style="margin: 3px 0 0 0;">{{ $shopSettings['receipt_footer'] ?? 'Exchanges allowed within 7 days with bill.' }}</p>
-        <p style="margin: 3px 0 0 0;">*** POS Invoice System ***</p>
     </div>
 
 </body>
