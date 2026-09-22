@@ -18,6 +18,7 @@
             background: #fff;
             font-size: 12px;
             line-height: 1.3;
+            font-weight: bold;
         }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
@@ -91,7 +92,7 @@
             @foreach($order->items as $item)
                 <tr>
                     <td colspan="4" style="font-weight: bold; padding-top: 4px;">
-                        {{ $item->product_name }} <span style="font-weight: normal; font-size: 9px;">({{ $item->item_code }})</span>
+                        {{ $item->product_name }} <span style="font-size: 9px;">({{ $item->item_code }})</span>
                     </td>
                 </tr>
                 <tr style="border-bottom: 1px dotted #ccc;">
